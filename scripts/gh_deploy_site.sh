@@ -12,6 +12,7 @@ rm -rf docs .gitignore
 mkdir -p docs
 cp -rf site/_site/* docs
 touch docs/.nojekyll
+echo "llm.mlc.ai" >> docs/CNAME
 
 DATE=`date`
 git add docs && git commit -am "Build at ${DATE}"
