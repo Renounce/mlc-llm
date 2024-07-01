@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 import requests
 
 from mlc_llm.json_ffi import JSONFFIEngine
+from mlc_llm.testing import require_test_model
 
 
 def base64_encode_image(url: str) -> str:
@@ -44,7 +45,7 @@ def run_chat_completion(
 
     for rid in range(num_requests):
         print(f"chat completion for request {rid}")
-        for response in engine.chat_completion(
+        for response in engine.chat.completions.create(
             messages=prompts[rid],
             model=model,
             max_tokens=max_tokens,
@@ -69,9 +70,9 @@ def run_chat_completion(
                 print(f"Output {req_id}({i}):{output}\n")
 
 
+@require_test_model("llava-1.5-7b-hf-q4f16_1-MLC")
 def test_chat_completion():
     # Create engine.
-    model = "dist/llava-1.5-7b-hf-q4f16_1-MLC"
     engine = JSONFFIEngine(
         model,
         max_total_sequence_length=1024,
@@ -80,7 +81,7 @@ def test_chat_completion():
     run_chat_completion(engine, model)
 
     # Test malformed requests.
-    for response in engine._handle_chat_completion("malformed_string", n=1, request_id="123"):
+    for response in engine._raw_chat_completion("malformed_string", n=1, request_id="123"):
         assert len(response.choices) == 1
         assert response.choices[0].finish_reason == "error"
 

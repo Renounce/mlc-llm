@@ -8,7 +8,7 @@ import GameController
 
 struct ChatView: View {
     @EnvironmentObject private var chatState: ChatState
-
+    @Environment(\.scenePhase) var scenePhase
     @State private var inputMessage: String = ""
     @FocusState private var inputIsFocused: Bool
     @Environment(\.dismiss) private var dismiss
@@ -20,7 +20,7 @@ struct ChatView: View {
     @State private var imageConfirmed: Bool = false
     @State private var imageSourceType: UIImagePickerController.SourceType = .photoLibrary
     @State private var image: UIImage?
-    
+
     var body: some View {
         VStack {
             modelInfoView
@@ -30,6 +30,11 @@ struct ChatView: View {
         }
         .navigationBarTitle("MLC Chat: \(chatState.displayName)", displayMode: .inline)
         .navigationBarBackButtonHidden()
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            if newPhase == .background {
+                self.chatState.requestSwitchToBackground()
+            }
+        }
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
@@ -50,6 +55,7 @@ struct ChatView: View {
                 .disabled(!chatState.isResettable)
             }
         }
+
     }
 }
 
@@ -65,13 +71,13 @@ private extension ChatView {
         ScrollViewReader { scrollViewProxy in
             ScrollView {
                 VStack {
-                    let messageCount = chatState.messages.count
-                    let hasSystemMessage = messageCount > 0 && chatState.messages[0].role == MessageRole.bot
+                    let messageCount = chatState.displayMessages.count
+                    let hasSystemMessage = messageCount > 0 && chatState.displayMessages[0].role == MessageRole.assistant
                     let startIndex = hasSystemMessage ? 1 : 0
 
                     // display the system message
                     if hasSystemMessage {
-                        MessageView(role: chatState.messages[0].role, message: chatState.messages[0].message)
+                        MessageView(role: chatState.displayMessages[0].role, message: chatState.displayMessages[0].message)
                     }
 
                     // display image
@@ -80,14 +86,14 @@ private extension ChatView {
                     }
 
                     // display conversations
-                    ForEach(chatState.messages[startIndex...], id: \.id) { message in
+                    ForEach(chatState.displayMessages[startIndex...], id: \.id) { message in
                         MessageView(role: message.role, message: message.message)
                     }
                     HStack { EmptyView() }
                         .id(messagesBottomID)
                 }
             }
-            .onChange(of: chatState.messages) { _ in
+            .onChange(of: chatState.displayMessages) { _ in
                 withAnimation {
                     scrollViewProxy.scrollTo(messagesBottomID, anchor: .bottom)
                 }
@@ -97,7 +103,7 @@ private extension ChatView {
 
     @ViewBuilder
     var uploadImageView: some View {
-        if chatState.useVision && !imageConfirmed {
+        if chatState.legacyUseImage && !imageConfirmed {
             if image == nil {
                 Button("Upload picture to chat") {
                     showActionSheet = true
@@ -136,7 +142,6 @@ private extension ChatView {
 
                             Button("Submit") {
                                 imageConfirmed = true
-                                chatState.requestProcessImage(image: image)
                             }
                             .padding()
                         }

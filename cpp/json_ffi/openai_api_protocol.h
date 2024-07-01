@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "../serve/config.h"
 #include "../support/result.h"
 #include "picojson.h"
 
@@ -20,10 +21,13 @@ namespace mlc {
 namespace llm {
 namespace json_ffi {
 
+using serve::DebugConfig;
+using serve::ResponseFormat;
+
 enum class Type { text, json_object, function };
 enum class FinishReason { stop, length, tool_calls, error };
 
-inline std::string generate_uuid_string(size_t length) {
+inline std::string GenerateUUID(size_t length) {
   auto randchar = []() -> char {
     const char charset[] =
         "0123456789"
@@ -70,7 +74,7 @@ class ChatFunctionCall {
 
 class ChatToolCall {
  public:
-  std::string id = "call_" + generate_uuid_string(8);
+  std::string id = "call_" + GenerateUUID(8);
   Type type = Type::function;
   ChatFunctionCall function;
 
@@ -121,12 +125,6 @@ class ChatCompletionMessage {
   picojson::object AsJSON() const;
 };
 
-class RequestResponseFormat {
- public:
-  Type type = Type::text;
-  std::optional<std::string> json_schema = std::nullopt;
-};
-
 class ChatCompletionRequest {
  public:
   std::vector<ChatCompletionMessage> messages;
@@ -147,7 +145,8 @@ class ChatCompletionRequest {
   std::optional<std::string> tool_choice = std::nullopt;
   std::optional<std::string> user = std::nullopt;
   bool ignore_eos = false;
-  //   RequestResponseFormat response_format; //TODO: implement this
+  std::optional<ResponseFormat> response_format = std::nullopt;
+  std::optional<DebugConfig> debug_config = std::nullopt;
 
   /*! \brief Parse and create a ChatCompletionRequest instance from the given JSON string. */
   static Result<ChatCompletionRequest> FromJSON(const std::string& json_str);
@@ -196,6 +195,7 @@ class ChatCompletionStreamResponse {
   std::string model;
   std::string system_fingerprint;
   std::string object = "chat.completion.chunk";
+  std::optional<picojson::value> usage;
 
   picojson::object AsJSON() const;
 };
